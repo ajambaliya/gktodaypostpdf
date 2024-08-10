@@ -7,3 +7,4 @@ pytz
 docx2pdf
 python-dotenv
 python-docx
+pypandoc
