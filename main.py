@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # MongoDB setup
 DB_NAME = os.getenv('DB_NAME', 'indiabixurl')  # Default to 'indiabixurl' if not set
 COLLECTION_NAME = 'ScrapedLinks'
-MONGO_CONNECTION_STRING = os.getenv('MONGO_CONNECTION_STRING', 'mongodb+srv://gpscapp:RPUMZKLsrQaBZ8LG@cluster0.cqll1b7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/')
+MONGO_CONNECTION_STRING = os.getenv('MONGO_CONNECTION_STRING')
 
 if not isinstance(DB_NAME, str):
     raise ValueError("DB_NAME must be a string")
@@ -204,7 +204,7 @@ async def main():
             return
         
         # Download and modify the template
-        template_url = 'https://docs.google.com/document/d/1Z5XIMW9Le8_n4Jk5V9M34uWyx_H0h5QpDFR7Kz9v6Xs/edit?usp=sharing'
+        template_url = 'https://docs.google.com/document/d/1WY7cgND3Ud0y4YHn-x-YMx3tcY0s4rMp/edit?usp=sharing&ouid=102301217323549397737&rtpof=true&sd=true'
         template_stream = download_template(template_url)
         doc = Document(template_stream)
         
