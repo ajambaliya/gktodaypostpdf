@@ -6,17 +6,13 @@ from docx import Document
 from datetime import datetime
 import pymongo
 from deep_translator import GoogleTranslator, exceptions
-from docx2pdf import convert
+import pypandoc
 import time
 import asyncio
 import telegram
 import logging
 from docx.shared import Inches
 import tempfile
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -152,6 +148,15 @@ def check_and_insert_urls(urls):
             collection.insert_one({'url': url})
     return new_urls
 
+# Function to convert DOCX to PDF using pypandoc
+def convert_docx_to_pdf(docx_path, pdf_path):
+    try:
+        pypandoc.convert_file(docx_path, 'pdf', outputfile=pdf_path)
+        logging.info(f"Converted {docx_path} to {pdf_path} successfully")
+    except Exception as e:
+        logging.error(f"Failed to convert DOCX to PDF: {e}")
+        raise
+
 # Function to send the PDF file to Telegram with retry mechanism
 async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
     bot = telegram.Bot(token=bot_token)
@@ -207,7 +212,7 @@ async def main():
         pdf_path = tmp_docx.name.replace('.docx', '.pdf')
         
         # Convert DOCX to PDF
-        convert(tmp_docx.name, pdf_path)
+        convert_docx_to_pdf(tmp_docx.name, pdf_path)
         
         bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
         channel_id = os.getenv('TELEGRAM_CHANNEL_ID')
@@ -220,6 +225,6 @@ async def main():
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
 
-# Run the async main function
+# Run the main function
 if __name__ == "__main__":
     asyncio.run(main())
