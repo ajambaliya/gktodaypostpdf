@@ -17,9 +17,12 @@ import subprocess
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # MongoDB setup
-DB_NAME = 'indiabixurl'
-COLLECTION_NAME = 'ScrapedLinks'
-MONGO_CONNECTION_STRING = os.getenv('MONGO_CONNECTION_STRING')
+DB_NAME = os.environ.get('DB_NAME')
+COLLECTION_NAME = os.environ.get('COLLECTION_NAME')
+MONGO_CONNECTION_STRING = os.environ.get('MONGO_CONNECTION_STRING')
+
+if not all([DB_NAME, COLLECTION_NAME, MONGO_CONNECTION_STRING]):
+    raise ValueError("One or more required MongoDB environment variables are not set")
 
 client = pymongo.MongoClient(MONGO_CONNECTION_STRING)
 db = client[DB_NAME]
@@ -181,6 +184,14 @@ async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
 
 async def main():
     try:
+        # Debug logging for environment variables
+        logging.info(f"DB_NAME: {os.environ.get('DB_NAME')}")
+        logging.info(f"COLLECTION_NAME: {os.environ.get('COLLECTION_NAME')}")
+        logging.info(f"MONGO_CONNECTION_STRING: {'*' * len(os.environ.get('MONGO_CONNECTION_STRING', '')) if os.environ.get('MONGO_CONNECTION_STRING') else 'Not set'}")
+        logging.info(f"TEMPLATE_URL: {os.environ.get('TEMPLATE_URL')}")
+        logging.info(f"TELEGRAM_BOT_TOKEN: {'*' * len(os.environ.get('TELEGRAM_BOT_TOKEN', '')) if os.environ.get('TELEGRAM_BOT_TOKEN') else 'Not set'}")
+        logging.info(f"TELEGRAM_CHANNEL_ID: {os.environ.get('TELEGRAM_CHANNEL_ID')}")
+
         base_url = "https://www.gktoday.in/current-affairs/"
         article_urls = fetch_article_urls(base_url, 2)
         new_urls = check_and_insert_urls(article_urls)
@@ -188,7 +199,9 @@ async def main():
             logging.info("No new articles found to scrape.")
             return
         
-        template_url = 'https://docs.google.com/document/d/1WY7cgND3Ud0y4YHn-x-YMx3tcY0s4rMp/edit?usp=sharing&ouid=102301217323549397737&rtpof=true&sd=true'
+        template_url = os.environ.get('TEMPLATE_URL')
+        if not template_url:
+            raise ValueError("TEMPLATE_URL environment variable is not set")
         
         template_bytes = download_template(template_url)
         
@@ -210,8 +223,12 @@ async def main():
         
         convert_docx_to_pdf(tmp_docx.name, pdf_path)
         
-        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-        channel_id = os.getenv('TELEGRAM_CHANNEL_ID')
+        bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+        channel_id = os.environ.get('TELEGRAM_CHANNEL_ID')
+        
+        if not bot_token or not channel_id:
+            raise ValueError("TELEGRAM_BOT_TOKEN or TELEGRAM_CHANNEL_ID environment variable is not set")
+        
         await send_pdf_to_telegram(pdf_path, bot_token, channel_id)
         
         os.unlink(tmp_docx.name)
