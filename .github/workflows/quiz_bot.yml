@@ -10,27 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v2
     
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v2
       with:
-        python-version: '3.9'
+        python-version: 3.9
     
     - name: Install dependencies
       run: |
-        sudo apt-get install -y pandoc
+        sudo apt-get update
+        sudo apt-get install -y pandoc wkhtmltopdf
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
     - name: Run the script
       env:
-        DB_NAME: ${{ secrets.DB_NAME }}
-        COLLECTION_NAME: ${{ secrets.COLLECTION_NAME }}
-        MONGO_CONNECTION_STRING: ${{ secrets.MONGO_CONNECTION_STRING }}
-        TEMPLATE_URL: ${{ secrets.TEMPLATE_URL }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        TELEGRAM_CHANNEL_USERNAME: ${{ secrets.TELEGRAM_CHANNEL_USERNAME }}
+        MONGO_CONNECTION_STRING: ${{ secrets.MONGO_CONNECTION_STRING }}
       run: |
         python main.py
