@@ -13,6 +13,7 @@ import telegram
 import logging
 from docx.shared import Inches
 import tempfile
+import pdfkit
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -151,7 +152,12 @@ def check_and_insert_urls(urls):
 # Function to convert DOCX to PDF using pypandoc
 def convert_docx_to_pdf(docx_path, pdf_path):
     try:
-        pypandoc.convert_file(docx_path, 'pdf', outputfile=pdf_path)
+        # Convert DOCX to HTML first
+        html_path = docx_path.replace('.docx', '.html')
+        pypandoc.convert_file(docx_path, 'html', outputfile=html_path)
+
+        # Convert HTML to PDF
+        pdfkit.from_file(html_path, pdf_path)
         logging.info(f"Converted {docx_path} to {pdf_path} successfully")
     except Exception as e:
         logging.error(f"Failed to convert DOCX to PDF: {e}")
