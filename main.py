@@ -143,10 +143,20 @@ def check_and_insert_urls(urls):
 
 def convert_docx_to_pdf(docx_path, pdf_path):
     try:
-        subprocess.run(['unoconv', '-f', 'pdf', '-o', pdf_path, docx_path], check=True)
+        subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', 
+                        os.path.dirname(pdf_path), docx_path], 
+                       check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        # Rename the output file to match the desired pdf_path
+        original_pdf = os.path.splitext(os.path.basename(docx_path))[0] + '.pdf'
+        original_pdf_path = os.path.join(os.path.dirname(pdf_path), original_pdf)
+        os.rename(original_pdf_path, pdf_path)
+        
         logging.info(f"Converted {docx_path} to {pdf_path} successfully")
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to convert DOCX to PDF: {e}")
+        logging.error(f"STDOUT: {e.stdout.decode()}")
+        logging.error(f"STDERR: {e.stderr.decode()}")
         raise
 
 async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
