@@ -6,7 +6,7 @@ from docx import Document
 from datetime import datetime
 import pymongo
 from deep_translator import GoogleTranslator, exceptions
-import pypandoc
+from docx2pdf import convert
 import time
 import asyncio
 import telegram
@@ -14,14 +14,20 @@ import logging
 from docx.shared import Inches
 import tempfile
 import pdfkit
+import pypandoc
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # MongoDB setup
-DB_NAME = os.getenv('DB_NAME')
-COLLECTION_NAME = os.getenv('COLLECTION_NAME')
-MONGO_CONNECTION_STRING = os.getenv('MONGO_CONNECTION_STRING')
+DB_NAME = os.getenv('DB_NAME', 'indiabixurl')  # Default to 'indiabixurl' if not set
+COLLECTION_NAME = 'ScrapedLinks'
+MONGO_CONNECTION_STRING = os.getenv('MONGO_CONNECTION_STRING', 'mongodb+srv://gpscapp:RPUMZKLsrQaBZ8LG@cluster0.cqll1b7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/')
+
+if not isinstance(DB_NAME, str):
+    raise ValueError("DB_NAME must be a string")
+if not isinstance(MONGO_CONNECTION_STRING, str):
+    raise ValueError("MONGO_CONNECTION_STRING must be a string")
 
 client = pymongo.MongoClient(MONGO_CONNECTION_STRING)
 db = client[DB_NAME]
@@ -149,20 +155,6 @@ def check_and_insert_urls(urls):
             collection.insert_one({'url': url})
     return new_urls
 
-# Function to convert DOCX to PDF using pypandoc
-def convert_docx_to_pdf(docx_path, pdf_path):
-    try:
-        # Convert DOCX to HTML first
-        html_path = docx_path.replace('.docx', '.html')
-        pypandoc.convert_file(docx_path, 'html', outputfile=html_path)
-
-        # Convert HTML to PDF
-        pdfkit.from_file(html_path, pdf_path)
-        logging.info(f"Converted {docx_path} to {pdf_path} successfully")
-    except Exception as e:
-        logging.error(f"Failed to convert DOCX to PDF: {e}")
-        raise
-
 # Function to send the PDF file to Telegram with retry mechanism
 async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
     bot = telegram.Bot(token=bot_token)
@@ -185,51 +177,57 @@ async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
             logging.error(f"Error sending document (attempt {attempt + 1}): {e}")
             break
 
+# Function to convert DOCX to PDF
+def convert_docx_to_pdf(docx_path, pdf_path):
+    try:
+        # Convert DOCX to HTML first
+        html_path = docx_path.replace('.docx', '.html')
+        pypandoc.convert_file(docx_path, 'html', outputfile=html_path)
+
+        # Convert HTML to PDF
+        pdfkit.from_file(html_path, pdf_path)
+        logging.info(f"Converted {docx_path} to {pdf_path} successfully")
+    except Exception as e:
+        logging.error(f"Failed to convert DOCX to PDF: {e}")
+        raise
+
 # Async function to handle main logic
 async def main():
     try:
         base_url = "https://www.gktoday.in/current-affairs/"
-        article_urls = fetch_article_urls(base_url, 2)
+        pages = 2
+        article_urls = fetch_article_urls(base_url, pages)
         new_urls = check_and_insert_urls(article_urls)
+
         if not new_urls:
-            logging.info("No new articles found to scrape.")
+            logging.info("No new URLs to process")
             return
         
-        template_url = os.getenv('TEMPLATE_URL')
+        # Download and modify the template
+        template_url = 'https://docs.google.com/document/d/1Z5XIMW9Le8_n4Jk5V9M34uWyx_H0h5QpDFR7Kz9v6Xs/edit?usp=sharing'
+        template_stream = download_template(template_url)
+        doc = Document(template_stream)
         
-        # Download the template
-        template_bytes = download_template(template_url)
-        
-        doc = Document(template_bytes)
-        logging.info("Template loaded successfully")
-        
-        all_content = []
         for url in new_urls:
-            logging.info(f"Scraping: {url}")
             content_list = await scrape_and_get_content(url)
-            all_content.extend(content_list)
-        
-        insert_content_between_placeholders(doc, all_content)
-        
-        # Create temporary files
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_docx:
-            doc.save(tmp_docx.name)
-        
-        pdf_path = tmp_docx.name.replace('.docx', '.pdf')
-        
-        # Convert DOCX to PDF
-        convert_docx_to_pdf(tmp_docx.name, pdf_path)
-        
-        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-        channel_id = os.getenv('TELEGRAM_CHANNEL_ID')
-        await send_pdf_to_telegram(pdf_path, bot_token, channel_id)
-        
-        # Clean up temporary files
-        os.unlink(tmp_docx.name)
-        os.unlink(pdf_path)
-        
+            insert_content_between_placeholders(doc, content_list)
+            
+            # Save modified DOCX to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_docx:
+                doc.save(tmp_docx.name)
+                tmp_docx.close()
+                
+                # Convert DOCX to PDF
+                pdf_path = tmp_docx.name.replace('.docx', '.pdf')
+                convert_docx_to_pdf(tmp_docx.name, pdf_path)
+                
+                # Send PDF to Telegram
+                bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+                channel_id = os.getenv('TELEGRAM_CHANNEL_USERNAME')
+                await send_pdf_to_telegram(pdf_path, bot_token, channel_id)
+
     except Exception as e:
-        logging.error(f"An error occurred: {e}", exc_info=True)
+        logging.error(f"An error occurred: {e}")
 
 # Run the main function
 if __name__ == "__main__":
