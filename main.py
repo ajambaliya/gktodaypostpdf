@@ -10,8 +10,8 @@ import time
 import asyncio
 import telegram
 import logging
-from docx2pdf import convert
 import tempfile
+import subprocess
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -143,9 +143,9 @@ def check_and_insert_urls(urls):
 
 def convert_docx_to_pdf(docx_path, pdf_path):
     try:
-        convert(docx_path, pdf_path)
+        subprocess.run(['unoconv', '-f', 'pdf', '-o', pdf_path, docx_path], check=True)
         logging.info(f"Converted {docx_path} to {pdf_path} successfully")
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         logging.error(f"Failed to convert DOCX to PDF: {e}")
         raise
 
