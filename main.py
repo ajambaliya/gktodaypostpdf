@@ -178,7 +178,7 @@ async def main():
             logging.info("No new articles found to scrape.")
             return
         
-        template_url = os.getenv('TEMPLATE_URL')
+        template_url = 'https://docs.google.com/document/d/1WY7cgND3Ud0y4YHn-x-YMx3tcY0s4rMp/edit?usp=sharing&ouid=102301217323549397737&rtpof=true&sd=true'
         
         template_bytes = download_template(template_url)
         
