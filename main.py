@@ -17,8 +17,8 @@ import tempfile
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # MongoDB setup
-DB_NAME = os.getenv('DB_NAME')
-COLLECTION_NAME = os.getenv('COLLECTION_NAME')
+DB_NAME = 'indiabixurl'
+COLLECTION_NAME = 'ScrapedLinks'
 MONGO_CONNECTION_STRING = os.getenv('MONGO_CONNECTION_STRING')
 
 client = pymongo.MongoClient(MONGO_CONNECTION_STRING)
