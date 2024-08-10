@@ -162,7 +162,7 @@ def convert_docx_to_pdf(docx_path, pdf_path):
         logging.error(f"STDERR: {e.stderr.decode()}")
         raise
 
-async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
+async def send_pdf_to_telegram(pdf_path, bot_token, channel_id, caption):
     bot = telegram.Bot(token=bot_token)
     max_retries = 3
     
@@ -172,7 +172,12 @@ async def send_pdf_to_telegram(pdf_path, bot_token, channel_id):
     for attempt in range(max_retries):
         try:
             with open(pdf_path, 'rb') as pdf_file:
-                await bot.send_document(chat_id=channel_id, document=pdf_file, filename=file_name)
+                await bot.send_document(
+                    chat_id=channel_id,
+                    document=pdf_file,
+                    filename=file_name,
+                    caption=caption
+                )
             logging.info(f"PDF sent to Telegram channel as '{file_name}'")
             break
         except telegram.error.TimedOut as e:
@@ -209,10 +214,12 @@ async def main():
         logging.info("Template loaded successfully")
         
         all_content = []
+        english_titles = []
         for url in new_urls:
             logging.info(f"Scraping: {url}")
             content_list = await scrape_and_get_content(url)
             all_content.extend(content_list)
+            english_titles.append(content_list[0]['text'])  # Assuming the first item is the title
         
         insert_content_between_placeholders(doc, all_content)
         
@@ -229,7 +236,13 @@ async def main():
         if not bot_token or not channel_id:
             raise ValueError("TELEGRAM_BOT_TOKEN or TELEGRAM_CHANNEL_ID environment variable is not set")
         
-        await send_pdf_to_telegram(pdf_path, bot_token, channel_id)
+        caption = (
+            f"🎗️ {datetime.now().strftime('%d %B %Y')} Current Affairs 🎗️\n\n"
+            + '\n'.join([f"👉 {title}" for title in english_titles]) + '\n\n'
+            + "🎉 Join us :- @CurrentAdda 🎉"
+        )
+        
+        await send_pdf_to_telegram(pdf_path, bot_token, channel_id, caption)
         
         os.unlink(tmp_docx.name)
         os.unlink(pdf_path)
